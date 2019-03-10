@@ -1,0 +1,235 @@
+<!-- this is the first vue app  -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Product App</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="cart">
+        <p>Cart ({{ cart.length }})</p>
+      </div>
+      <Product :premium="premium" @add-to-cart='updateCart'></Product>
+      <!-- <ProductReview></ProductReview>  -->
+    </div>
+
+    <script>
+      
+      var eventBus = new Vue() ;
+
+      Vue.component("Product", {
+        props: {
+          premium: {
+            type: Boolean,
+            required: true
+          }
+        },
+        template: `
+        <div class="product">
+            <div class="product-img">
+            <img :src="image" alt="product-Img" />
+            </div>
+            <div class="product-info">
+            <h1>{{ title }}</h1>
+            <p v-if="inStock">In Stock</p>
+            <p v-else style= "color: red">Out Of Stock</p>
+            <ul>
+                <li v-for="detail of details">{{ detail }}</li>
+            </ul>
+            <p>Shipping: <span style="color:blue">{{shipping}}</span></p>
+            <div v-for="(varent,index) of variants" :key="varent.variantId">
+                <div
+                class="color-box"
+                :style={backgroundColor:varent.variantColor}
+                @mouseover="updateProduct(index)"
+                >
+                </div>
+            </div>
+
+            <button @click="addToCart" 
+            :disabled='!inStock'
+            :class="{'disabled-button':!inStock}"
+            >Add To Cart</button>
+
+            <ProductTabs :reviews="reviews"></ProductTabs>
+            
+      </div>
+      `,
+        data() {
+          return {
+            product: "T-Shirt",
+            brand: "Boos",
+            selectedVariant: 0,
+            details: ["80% Cotton", "20% Polyester", "gender-neutral"],
+            variants: [
+              {
+                variantId: 2345,
+                variantColor: "green",
+                variantImage: "./assets/green-shirt.jpeg",
+                varentQuantity: 5,
+                price: 2.99
+              },
+              {
+                variantId: 2346,
+                variantColor: "blue",
+                variantImage: "./assets/blue-shirt.jpeg",
+                varentQuantity: 2,
+                price: 2.99
+              },
+              {
+                variantId: 2347,
+                variantColor: "orange",
+                variantImage: "./assets/orange-shirt.jpeg",
+                varentQuantity: 0,
+                price: 2.99
+              }
+            ],
+            reviews:[]
+          };
+        },
+        methods: {
+          addToCart() {
+            this.$emit('add-to-cart',this.variants[this.selectedVariant].variantId)
+          },
+          updateProduct(index) {
+            this.selectedVariant = index;
+          }
+        },
+        computed: {
+          title() {
+            return `${this.brand} - ${this.product}`;
+          },
+          image() {
+            return this.variants[this.selectedVariant].variantImage;
+          },
+          inStock() {
+            return this.variants[this.selectedVariant].varentQuantity;
+          },
+          shipping() {
+            if (this.premium) {
+              return "Free";
+            }
+            return this.variants[this.selectedVariant].price;
+          }
+        },
+        mounted(){
+            eventBus.$on("review-submitted", productReview => {
+              this.reviews.push(productReview)
+          
+            })
+          }
+      });
+
+Vue.component('ProductReview',{
+    template:`
+    <form class="review-form" @submit.prevent="onSubmit">
+      <p>
+        <label for="name">Name:</label>
+        <input id="name" v-model="name" placeholder="name" required>
+      </p>
+      
+      <p>
+        <label for="review">Review:</label>      
+        <textarea id="review" v-model="review" required></textarea>
+      </p>
+      
+      <p>
+        <label for="rating">Rating:</label>
+        <select id="rating" v-model.number="rating" required>
+          <option>5</option>
+          <option>4</option>
+          <option>3</option>
+          <option>2</option>
+          <option>1</option>
+        </select>
+      </p>
+          
+      <p>
+        <input type="submit" value="Submit">  
+      </p>    
+    
+    </form>
+    `,
+    data(){
+        return {
+            name: null,
+            review: null,
+            rating: null
+        }
+    },
+    methods:{
+        onSubmit(){
+            let productReview={
+                name: this.name,
+                review: this.review,
+                rating: this.rating
+            }
+            eventBus.$emit("review-submitted",productReview)
+            this.name = null 
+            this.review = null 
+            this.rating = null
+        }
+    }
+})
+
+
+Vue.component('ProductTabs',{
+  props:{
+    reviews:{
+      type:Array,
+      required:true
+    }
+  },
+    template:`
+    <div>
+        <span class = "tab" 
+        :class = "{activeTab : selectedTab === tab}"
+        v-for="(tab, index) in tabs" 
+        @click="selectedTab=tab"
+        :key="index">
+        {{ tab }}
+        </span>
+
+        <div v-show="selectedTab==='Reviews'">
+                <h2>Reviews</h2>
+                <p v-if="!reviews.length">There are no reviews yet.</p>
+                <ul>
+                    <li class="review" v-for="review in reviews">
+                        <p>{{ review.name }}</p>
+                        <p>Rating: {{ review.rating }}</p>
+                        <p>{{ review.review }}</p>
+                    </li>
+                </ul>
+            </div>
+            <ProductReview v-show="selectedTab === 'Make a Review'"></ProductReview>
+        </div>
+
+    </div>
+    `,
+    data(){
+        return{
+            tabs:['Reviews','Make a Review'],
+            selectedTab:"Reviews"
+        }
+
+    }
+})
+
+      var app = new Vue({
+        el: "#app",
+        data: {
+          premium: false,
+          cart: []
+        },
+        methods:{
+            updateCart(id){
+                this.cart.push(id)
+            }
+        }
+      });
+    </script>
+  </body>
+</html>
